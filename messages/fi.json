@@ -1,0 +1,34 @@
+{
+    "home": {
+      "title": "Tervetuloa TyhjäänTauluun!",
+      "hostgame": "Luo peli",
+      "enterroom": "Syötä huoneen ID",
+      "joingame": "Liity peliin",
+      "how": "Miten peli toimii?",
+      "step1": "1. Luo peli itse tai liity olemassa olevaan peliin huoneen ID:n avulla.",
+      "step2": "2. Jokaisella kierroksella esiin tulee sana, jossa on puuttuva osa.",
+      "step3": "3. Pelaajat syöttävät sanan, joka heidän mielestään sopii parhaiten toisen sanan pariksi.",
+      "step4": "4. Jos olet kirjoittanut saman sanan yhden pelaajan kanssa, molemmat saavat 3 pistettä. Jos olet kirjoittanut saman sanan useiden pelaajien kanssa, kaikki saavat 1 pisteen. Ei osumia, ei pisteitä!",
+      "close": "Sulje"
+    },
+    "room": {
+    "roomid": "Huoneen ID",
+    "scoreboard": "Tulostaulu",
+    "nickname": "Nimimerkki",
+    "points": "Pisteet",
+    "submitted": "✅ Lukittu",
+    "waiting": "⏳ Odottaa...",
+    "enter_your_nickname": "Syötä nimimerkkisi",
+    "set_nickname": "Aseta nimimerkki",
+    "word_pack_language": "Valitse sanapaketin kieli",
+    "finnish": "Suomi",
+    "english": "Englanti",
+    "start_game": "Aloita peli",
+    "round_word_is": "Kierroksen sana on:",
+    "new_round_starts_in": "Uusi kierros alkaa ",
+    "after_seconds": "sekunnin kuluttua...",
+    "enter_your_word": "Syötä sanasi",
+    "submit_word": "Lukitse vastaus",
+    "starting_game": "Aloitetaan peliä"
+    }
+}

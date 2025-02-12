@@ -1,0 +1,34 @@
+{
+    "home": {
+      "title": "Welcome to BlankSlate!",
+      "hostgame": "Host game",
+      "enterroom": "Enter Room ID",
+      "joingame": "Join Game",
+      "how": "How the game works?",
+      "step1": "1. Host a game or join an existing one with Room ID.",
+      "step2": "2. Each round, a word prompt appears with a missing part.",
+      "step3": "3. Players submit words that fill the blank spot.",
+      "step4": "4. If you match the word with one player you both get 3 points. If you match the word with multiple people you all get 1 point. No matches, no points!",
+      "close": "Close"
+    },
+    "room": {
+    "roomid": "Room ID",
+    "scoreboard": "Scoreboard",
+    "nickname": "Nickname",
+    "points": "Points",
+    "submitted": "✅ Submitted",
+    "waiting": "⏳ Waiting..",
+    "enter_your_nickname": "Enter your nickname",
+    "set_nickname": "Set Nickname",
+    "word_pack_language": "Select word pack language",
+    "finnish": "Finnish",
+    "english": "English",
+    "start_game": "Start Game",
+    "round_word_is": "Round word is:",
+    "new_round_starts_in": "New round starts in",
+    "after_seconds": "seconds...",
+    "enter_your_word": "Enter your word",
+    "submit_word": "Submit Word",
+  "starting_game": "Starting game..."
+  }
+}
