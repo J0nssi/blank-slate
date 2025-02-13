@@ -435,7 +435,7 @@ export default function RoomPage() {
             onChange={(e) => setNickname(e.target.value)}
             placeholder={t('enter_your_nickname')}
             className="w-2/3 p-2 text-lg border rounded-md text-black"
-            maxLength={10}
+            maxLength={15}
           />
           <button
             onClick={handleNicknameSubmit}
