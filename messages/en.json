@@ -29,6 +29,7 @@
     "after_seconds": "seconds...",
     "enter_your_word": "Enter your word",
     "submit_word": "Submit Word",
-  "starting_game": "Starting game..."
+    "starting_game": "Starting game...",
+    "new_game": "New game available in"
   }
 }

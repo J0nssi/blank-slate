@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
   db,
@@ -34,6 +34,7 @@ export default function RoomPage() {
   const [resultsProcessed, setResultsProcessed] = useState(false);
   const [nextRoundTimer, setNextRoundTimer] = useState(null);
   const t = useTranslations('room');
+  const inputRef = useRef(null);
   
   // New state for language selection (default to "finnish")
   const [language, setLanguage] = useState("finnish");
@@ -43,6 +44,12 @@ export default function RoomPage() {
       setRoomId(params.roomId);
     }
   }, [params]);
+
+  useEffect(() => {
+    if (gameStarted && !hasSubmitted) {
+      inputRef.current?.focus(); // Focus the input element
+    }
+  }, [gameStarted, hasSubmitted]);
 
   useEffect(() => {
     if (!roomId) return;
@@ -73,6 +80,7 @@ export default function RoomPage() {
         }
       });
     };
+    
 
     setup();
   }, [roomId, router]);
@@ -115,19 +123,32 @@ export default function RoomPage() {
     setHasSubmitted(false);
   }, [roomData?.currentRound?.wordPrompt]);
 
+  
+
   const updateScores = async (newScores) => {
     const roomRef = doc(db, "rooms", roomId);
     const updatedPlayers = players.map((player) => ({
       ...player,
       score: (player.score || 0) + (newScores[player.userId] || 0),
     }));
-    await updateDoc(roomRef, { players: updatedPlayers });
+  
+    // Check if there's a winner (25+ points)
     const winner = updatedPlayers.find((player) => player.score >= 25);
     if (winner) {
       alert(`Game over! ${winner.nickname} wins with ${winner.score} points!`);
-      setGameEnded(true); // End the game
+      await updateDoc(roomRef, {
+        players: updatedPlayers.map(p => ({ ...p, score: 0 })), // Reset all scores
+        gameStarted: false, // Send everyone to the lobby
+        gameEnded: true, // Mark game as ended
+      });
+  
+      return; // Stop further updates
     }
+  
+    // If no winner, update the scores normally
+    await updateDoc(roomRef, { players: updatedPlayers });
   };
+
 
   const checkWordMatches = (wordsSubmitted) => {
     const wordCount = {};
@@ -180,6 +201,8 @@ export default function RoomPage() {
   const handleStartGame = async () => {
     if (isHost && !gameStarted) {
       setIsLoading(true);
+      console.log("🔍 Starting game with userId:", userId);  // Ensure this logs the correct userId
+
       await startGame(roomId, language);
       setIsLoading(false);
     }
@@ -196,47 +219,65 @@ export default function RoomPage() {
     }
   };
 
-  const processResults = async () => {
-    if (resultsProcessed) return;
-    const wordCount = {};
-    const newScores = {};
-    roomData?.currentRound?.wordsSubmitted.forEach((submission) => {
-      const word = submission.word.toLowerCase();
-      wordCount[word] = (wordCount[word] || 0) + 1;
-    });
-    roomData?.currentRound?.wordsSubmitted.forEach((submission) => {
-      const userId = submission.userId;
-      const word = submission.word.toLowerCase();
-      const count = wordCount[word];
-      if (count === 1) {
-        newScores[userId] = (newScores[userId] || 0);
-      } else if (count === 2) {
-        newScores[userId] = (newScores[userId] || 0) + 3;
-      } else {
-        newScores[userId] = (newScores[userId] || 0) + 1;
-      }
-    });
-    await updateScores(newScores);
-    let countdown = 10;
-    setNextRoundTimer(countdown);
-    const countdownInterval = setInterval(() => {
-      countdown -= 1;
-      setNextRoundTimer(countdown);
-      if (countdown <= 0) {
-        clearInterval(countdownInterval);
-        setNextRoundTimer(null);
-        console.log("Starting new round with a fresh word...");
-        setShowResults(false);
-        setHasSubmitted(false);
-        setWordMatches({});
-        setPlayerCardColors({});
-        setWord("");
-        setResultsProcessed(false);
-        // Pass the language parameter to generateNewWord as well
-        generateNewWord(roomId, language);
-      }
-    }, 1000);
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !hasSubmitted) {
+      handleSubmitWord(); // Call your word submission logic
+    }
   };
+
+  const processResults = async () => {
+  if (resultsProcessed) return;
+
+  const wordCount = {};
+  const newScores = {};
+
+  roomData?.currentRound?.wordsSubmitted.forEach((submission) => {
+    const word = submission.word.toLowerCase();
+    wordCount[word] = (wordCount[word] || 0) + 1;
+  });
+
+  roomData?.currentRound?.wordsSubmitted.forEach((submission) => {
+    const userId = submission.userId;
+    const word = submission.word.toLowerCase();
+    const count = wordCount[word];
+
+    if (count === 1) {
+      newScores[userId] = (newScores[userId] || 0);
+    } else if (count === 2) {
+      newScores[userId] = (newScores[userId] || 0) + 25;
+    } else {
+      newScores[userId] = (newScores[userId] || 0) + 1;
+    }
+  });
+
+  await updateScores(newScores);
+
+  if (roomData.gameEnded) return; // Stop if game has ended
+
+  let countdown = 10;
+  setNextRoundTimer(countdown);
+
+  const countdownInterval = setInterval(() => {
+    countdown -= 1;
+    setNextRoundTimer(countdown);
+    
+    if (countdown <= 0) {
+      clearInterval(countdownInterval);
+      setNextRoundTimer(null);
+
+      console.log("Starting new round...");
+      setShowResults(false);
+      setHasSubmitted(false);
+      setWordMatches({});
+      setPlayerCardColors({});
+      setWord("");
+      setResultsProcessed(false);
+
+      generateNewWord(roomId, userId, language); // Keep the game going
+    }
+  }, 1000);
+};
+
 
   const allPlayersSubmitted =
     roomData?.currentRound?.wordsSubmitted?.length === players.length;
@@ -353,12 +394,14 @@ export default function RoomPage() {
                 )}
                 <div className="mt-4">
                   <input
+                    ref={inputRef}
                     type="text"
                     value={word}
                     onChange={(e) => setWord(e.target.value)}
                     placeholder={t('enter_your_word')}
                     className="p-4 text-lg border-2 border-gray-600 rounded-lg bg-gray-800 text-white w-64 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     disabled={hasSubmitted}
+                    onKeyDown={handleKeyDown}
                   />
                 </div>
                 <button
