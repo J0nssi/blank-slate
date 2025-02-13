@@ -279,7 +279,7 @@ export default function RoomPage() {
       if (count === 1) {
         newScores[userId] = (newScores[userId] || 0);
       } else if (count === 2) {
-        newScores[userId] = (newScores[userId] || 0) + 25;
+        newScores[userId] = (newScores[userId] || 0) + 3;
       } else {
         newScores[userId] = (newScores[userId] || 0) + 1;
       }
