@@ -261,21 +261,22 @@ export default function RoomPage() {
   };
 
   const processResults = async () => {
-    if (resultsProcessed) return;
-
+    if (resultsProcessed || !roomData || !roomData.currentRound) return;
+    setResultsProcessed(true); // Ensure this runs only once per round
+  
     const wordCount = {};
     const newScores = {};
-
-    roomData?.currentRound?.wordsSubmitted.forEach((submission) => {
+  
+    roomData.currentRound.wordsSubmitted.forEach((submission) => {
       const word = submission.word.toLowerCase();
       wordCount[word] = (wordCount[word] || 0) + 1;
     });
-
-    roomData?.currentRound?.wordsSubmitted.forEach((submission) => {
+  
+    roomData.currentRound.wordsSubmitted.forEach((submission) => {
       const userId = submission.userId;
       const word = submission.word.toLowerCase();
       const count = wordCount[word];
-
+  
       if (count === 1) {
         newScores[userId] = (newScores[userId] || 0);
       } else if (count === 2) {
@@ -284,22 +285,25 @@ export default function RoomPage() {
         newScores[userId] = (newScores[userId] || 0) + 1;
       }
     });
-
-    await updateScores(newScores);
-
+  
+    // Ensure only the host updates scores
+    if (roomData.hostId === userId) {
+      await updateScores(newScores);
+    }
+  
     if (roomData.gameEnded) return; // Stop if game has ended
-
+  
     let countdown = 10;
     setNextRoundTimer(countdown);
-
+  
     const countdownInterval = setInterval(() => {
       countdown -= 1;
       setNextRoundTimer(countdown);
-
+  
       if (countdown <= 0) {
         clearInterval(countdownInterval);
         setNextRoundTimer(null);
-
+  
         console.log("Starting new round...");
         setShowResults(false);
         setHasSubmitted(false);
@@ -307,7 +311,7 @@ export default function RoomPage() {
         setPlayerCardColors({});
         setWord("");
         setResultsProcessed(false);
-        
+  
         generateNewWord(roomId, userId, language); // Keep the game going
       }
     }, 1000);
@@ -477,7 +481,7 @@ export default function RoomPage() {
             {t('round_word_is')}
           </h2>
           <h2 className="text-4xl font-bold text-gray-100 mb-6">
-            {roomData?.currentRound?.wordPrompt || "Word Prompt"}
+            {roomData?.currentRound?.wordPrompt.toLowerCase() || "Word Prompt"}
           </h2>
           {nextRoundTimer !== null && (
             <p className="text-lg text-gray-500 mt-2">
