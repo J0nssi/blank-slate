@@ -8,6 +8,7 @@ import {
   signInAnon,
   startGame,
   generateNewWord,
+  removePlayer
   // ... other exported functions if needed
 } from "../../../lib/firebase";
 import { doc, onSnapshot, updateDoc, arrayUnion, getDoc } from "firebase/firestore";
@@ -57,6 +58,21 @@ export default function RoomPage() {
 
   return () => unsubscribe();
 }, [roomId]);
+
+useEffect(() => {
+  const handleUnload = () => {
+    removePlayer(roomId, userId); // No `await` here
+  };
+
+  window.addEventListener("beforeunload", handleUnload);
+  window.addEventListener("unload", handleUnload); // Extra safety
+
+  return () => {
+    window.removeEventListener("beforeunload", handleUnload);
+    window.removeEventListener("unload", handleUnload);
+  };
+}, [roomId, userId]);
+
 
 
   useEffect(() => {
@@ -537,7 +553,6 @@ export default function RoomPage() {
         </div>
 
       )}
-      
     </div>
   );
 }
