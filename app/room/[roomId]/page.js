@@ -53,6 +53,7 @@ export default function RoomPage() {
       setLastRoundScores(data.lastRoundScores || []); // Get last round scores from Firestore
       setLastRoundWords(data.lastRoundWords || []);
       setShowLastRound(data.showLastRound || false);
+      
     }
   });
 
@@ -60,18 +61,18 @@ export default function RoomPage() {
 }, [roomId]);
 
 useEffect(() => {
-  const handleUnload = () => {
-    removePlayer(roomId, userId); // No `await` here
-  };
+    const handleUnload = () => {
+      removePlayer(roomId, userId); // No `await` here
+    };
 
-  window.addEventListener("beforeunload", handleUnload);
-  window.addEventListener("unload", handleUnload); // Extra safety
+    window.addEventListener("beforeunload", handleUnload);
+    window.addEventListener("unload", handleUnload); // Extra safety
 
-  return () => {
-    window.removeEventListener("beforeunload", handleUnload);
-    window.removeEventListener("unload", handleUnload);
-  };
-}, [roomId, userId]);
+    return () => {
+      window.removeEventListener("beforeunload", handleUnload);
+      window.removeEventListener("unload", handleUnload);
+    };
+  }, [roomId, userId]);
 
 
 
