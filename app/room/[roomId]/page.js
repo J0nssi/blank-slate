@@ -159,7 +159,7 @@ export default function RoomPage() {
     if (winner) {
       setGameEnded(true);
       setWinner(winner);
-      setLastRoundWords(lastRoundWords);
+      setLastRoundWords(roomData.currentRound.wordsSubmitted);
       setShowLastRound(true);
 
       // Store last round scores **before resetting** the Firestore document
@@ -172,7 +172,7 @@ export default function RoomPage() {
       // ✅ Save last round scores & words to Firestore
       await updateDoc(roomRef, {
         lastRoundScores: lastRoundScores, // Store last round scores in Firestore
-        lastRoundWords: lastRoundWords, // Store last round words
+        lastRoundWords: roomData.currentRound.wordsSubmitted,
         players: updatedPlayers.map(p => ({ ...p, score: 0 })), // Reset scores
         gameStarted: false, // Return to lobby
         gameEnded: true,
