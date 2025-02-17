@@ -44,6 +44,20 @@ export default function RoomPage() {
   const [language, setLanguage] = useState("finnish");
 
   useEffect(() => {
+  if (!roomId) return;
+  const roomRef = doc(db, "rooms", roomId);
+  const unsubscribe = onSnapshot(roomRef, (docSnap) => {
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      setLastRoundScores(data.lastRoundScores || []); // Get last round scores from Firestore
+      setLastRoundWords(data.lastRoundWords || []);
+    }
+  });
+
+  return () => unsubscribe();
+}, [roomId]);
+
+  useEffect(() => {
     if (params?.roomId) {
       setRoomId(params.roomId);
     }
@@ -135,37 +149,43 @@ export default function RoomPage() {
       ...player,
       score: (player.score || 0) + (newScores[player.userId] || 0),
     }));
-  
+
     // Check for a winner (25+ points)
     const winner = updatedPlayers.find((player) => player.score >= 25);
     if (winner) {
       setGameEnded(true);
       setWinner(winner);
       setLastRoundWords(roomData.currentRound.wordsSubmitted);
-  
-      // Show last round scoreboard
       setShowLastRound(true);
-  
+
       // Store last round scores **before resetting** the Firestore document
-      setLastRoundScores(updatedPlayers.map(player => ({
+      const lastRoundScores = updatedPlayers.map(player => ({
         userId: player.userId,
         nickname: player.nickname,
         score: player.score, // Save scores before reset
-      })));
-  
-      // Update Firestore to reset scores & return to lobby
+      }));
+
+      // ✅ Save last round scores & words to Firestore
       await updateDoc(roomRef, {
+        lastRoundScores: lastRoundScores, // Store last round scores in Firestore
+        lastRoundWords: roomData.currentRound.wordsSubmitted, // Store last round words
         players: updatedPlayers.map(p => ({ ...p, score: 0 })), // Reset scores
         gameStarted: false, // Return to lobby
         gameEnded: true,
       });
-  
+
+      setTimeout(() => {
+        setShowLastRound(false); // Switch back to normal scoreboard
+      }, 10000);
+
       return; // Stop further updates
     }
-  
+
     // If no winner, update Firestore with new scores
     await updateDoc(roomRef, { players: updatedPlayers });
-  };
+};
+
+
 
   const checkWordMatches = (wordsSubmitted) => {
     const wordCount = {};
@@ -321,7 +341,7 @@ export default function RoomPage() {
       <h1 className="text-4xl font-bold mb-4">{t('roomid')}: {roomId}</h1>
 
       {/* Scoreboard Section */}
-{showLastRound ? (
+{lastRoundScores && showLastRound && lastRoundScores.length > 0 ? (
   // Last Round Scoreboard
   <div className="w-full max-w-2xl bg-gray-800 p-4 rounded-lg shadow-lg mb-6">
     <h2 className="text-2xl font-bold text-center mb-4">🏆 Last Round Scoreboard 🏆</h2>
