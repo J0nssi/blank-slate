@@ -44,13 +44,14 @@ export default function RoomPage() {
   const [language, setLanguage] = useState("finnish");
 
   useEffect(() => {
-  if (!roomId) return;
+    if (!roomId) return;
   const roomRef = doc(db, "rooms", roomId);
   const unsubscribe = onSnapshot(roomRef, (docSnap) => {
     if (docSnap.exists()) {
       const data = docSnap.data();
       setLastRoundScores(data.lastRoundScores || []); // Get last round scores from Firestore
       setLastRoundWords(data.lastRoundWords || []);
+      setShowLastRound(true);
     }
   });
 
@@ -341,7 +342,7 @@ export default function RoomPage() {
       <h1 className="text-4xl font-bold mb-4">{t('roomid')}: {roomId}</h1>
 
       {/* Scoreboard Section */}
-{lastRoundScores && lastRoundScores.length > 0 ? (
+{lastRoundScores && showLastRound && lastRoundScores.length > 0 ? (
   // Last Round Scoreboard
   <div className="w-full max-w-2xl bg-gray-800 p-4 rounded-lg shadow-lg mb-6">
     <h2 className="text-2xl font-bold text-center mb-4">🏆 Last Round Scoreboard 🏆</h2>
