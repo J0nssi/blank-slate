@@ -160,22 +160,6 @@ export default function RoomPage() {
         gameEnded: true,
       });
   
-      // Hide last round scoreboard after 10 seconds
-      setTimeout(() => {
-        setGameEnded(false);
-        setShowLastRound(false); // Switch back to normal scoreboard
-        setWinner(null);
-        setLastRoundWords([]);
-        setLastRoundScores([]); // Clear after 10s
-        setShowResults(false);
-        setResultsProcessed(false);
-        setHasSubmitted(false);
-        setWordMatches({});
-        setPlayerCardColors({});
-        setWord("");
-        resetGameState();
-      }, 10000); // Wait 10 seconds before resetting UI
-  
       return; // Stop further updates
     }
   
@@ -240,6 +224,18 @@ export default function RoomPage() {
 
       await startGame(roomId, language);
       setIsLoading(false);
+      setGameEnded(false);
+        setShowLastRound(false); // Switch back to normal scoreboard
+        
+        setLastRoundWords([]);
+        setLastRoundScores([]); // Clear after 10s
+        setShowResults(false);
+        setResultsProcessed(false);
+        setHasSubmitted(false);
+        setWordMatches({});
+        setPlayerCardColors({});
+        setWord("");
+        resetGameState();
     }
   };
 
@@ -278,7 +274,7 @@ export default function RoomPage() {
       const count = wordCount[word];
   
       if (count === 1) {
-        newScores[userId] = (newScores[userId] || 0);
+        newScores[userId] = (newScores[userId] || 0) + 25;
       } else if (count === 2) {
         newScores[userId] = (newScores[userId] || 0) + 3;
       } else {
@@ -328,9 +324,6 @@ export default function RoomPage() {
 {showLastRound ? (
   // Last Round Scoreboard
   <div className="w-full max-w-2xl bg-gray-800 p-4 rounded-lg shadow-lg mb-6">
-    <h2 className="text-3xl font-bold text-center mb-8">
-      🎉 <span className="text-yellow-400">{winner?.nickname}</span> wins with {winner?.score} points! 🎉
-    </h2>
     <h2 className="text-2xl font-bold text-center mb-4">🏆 Last Round Scoreboard 🏆</h2>
     <div className="grid grid-cols-2 border-b border-gray-600 pb-2 text-gray-400">
       <div className="font-semibold">{t('nickname')}</div>
@@ -451,19 +444,25 @@ export default function RoomPage() {
       )}
 
       {/* Language Dropdown and Start Game Button Section */}
-      {isHost && !gameStarted && !winner && (
+      {isHost && !gameStarted && (
         <div className="w-full max-w-2xl flex flex-col md:flex-row items-center justify-between space-x-0 md:space-x-4 mb-6">
           <div className="flex items-center space-x-2 mb-4 md:mb-0">
+          {!winner && (
+            <div>
             <span className="text-lg text-gray-300">{t('word_pack_language')}</span>
+            
             <select
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
-              className="p-2 text-lg border rounded-md text-black focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              className="p-2 ml-4 text-lg border rounded-md text-black focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
             >
               <option value="finnish">{t('finnish')}</option>
               <option value="english">{t('english')}</option>
             </select>
+            </div>
+          )}
           </div>
+          {!winner && (
           <button
             onClick={handleStartGame}
             className="bg-green-500 text-white px-8 py-4 text-xl rounded-lg shadow-md hover:bg-green-600 transition w-full md:w-auto"
@@ -471,6 +470,7 @@ export default function RoomPage() {
           >
             {isLoading ? t('starting_game') : t('start_game')}
           </button>
+          )}
         </div>
       )}
 
