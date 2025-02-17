@@ -341,7 +341,7 @@ export default function RoomPage() {
       <h1 className="text-4xl font-bold mb-4">{t('roomid')}: {roomId}</h1>
 
       {/* Scoreboard Section */}
-{lastRoundScores && showLastRound && lastRoundScores.length > 0 ? (
+{lastRoundScores && lastRoundScores.length > 0 ? (
   // Last Round Scoreboard
   <div className="w-full max-w-2xl bg-gray-800 p-4 rounded-lg shadow-lg mb-6">
     <h2 className="text-2xl font-bold text-center mb-4">🏆 Last Round Scoreboard 🏆</h2>
