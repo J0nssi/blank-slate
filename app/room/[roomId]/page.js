@@ -44,19 +44,20 @@ export default function RoomPage() {
   const [language, setLanguage] = useState("finnish");
 
   useEffect(() => {
-    if (!roomId) return;
+  if (!roomId) return;
   const roomRef = doc(db, "rooms", roomId);
   const unsubscribe = onSnapshot(roomRef, (docSnap) => {
     if (docSnap.exists()) {
       const data = docSnap.data();
       setLastRoundScores(data.lastRoundScores || []); // Get last round scores from Firestore
       setLastRoundWords(data.lastRoundWords || []);
-      setShowLastRound(true);
+      setShowLastRound(data.showLastRound || false);
     }
   });
 
   return () => unsubscribe();
 }, [roomId]);
+
 
   useEffect(() => {
     if (params?.roomId) {
@@ -142,6 +143,8 @@ export default function RoomPage() {
     setHasSubmitted(false);
   }, [roomData?.currentRound?.wordPrompt]);
 
+
+
   const updateScores = async (newScores) => {
     const roomRef = doc(db, "rooms", roomId);
     
@@ -156,7 +159,7 @@ export default function RoomPage() {
     if (winner) {
       setGameEnded(true);
       setWinner(winner);
-      setLastRoundWords(roomData.currentRound.wordsSubmitted);
+      setLastRoundWords(lastRoundWords);
       setShowLastRound(true);
 
       // Store last round scores **before resetting** the Firestore document
@@ -169,14 +172,18 @@ export default function RoomPage() {
       // ✅ Save last round scores & words to Firestore
       await updateDoc(roomRef, {
         lastRoundScores: lastRoundScores, // Store last round scores in Firestore
-        lastRoundWords: roomData.currentRound.wordsSubmitted, // Store last round words
+        lastRoundWords: lastRoundWords, // Store last round words
         players: updatedPlayers.map(p => ({ ...p, score: 0 })), // Reset scores
         gameStarted: false, // Return to lobby
         gameEnded: true,
+        showLastRound: true, // Flag to show the last round scoreboard
       });
 
       setTimeout(() => {
         setShowLastRound(false); // Switch back to normal scoreboard
+        updateDoc(roomRef, {
+          showLastRound: false, // Set back to false in Firestore
+        });
       }, 10000);
 
       return; // Stop further updates
@@ -422,7 +429,7 @@ export default function RoomPage() {
       )}
 
       {/* Display Last Round Words Using Player Cards */}
-      {gameEnded && winner && (
+      {showLastRound &&(
         <div className="w-full max-w-2xl grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
           {players.map((player) => {
             const lastRoundWord = lastRoundWords.find(w => w.userId === player.userId)?.word;
