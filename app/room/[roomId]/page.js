@@ -41,7 +41,13 @@ export default function RoomPage() {
   const inputRef = useRef(null);
   const [showLastRound, setShowLastRound] = useState(false);
   const beepSound = new Audio("/beep.mp3");
+  const soundOnePoint = new Audio("/onepoint.mp3");
+  const soundThreePoints = new Audio("/threepoints.mp3");
+  const soundZeroPoints = new Audio("/zeropoints.mp3");
   beepSound.volume = 0.02; // 🔊 Reduce volume to 50%
+  soundThreePoints.volume = 0.05;
+  soundZeroPoints.volume = 0.05;
+  soundOnePoint.volume = 0.05;
 
   // New state for language selection (default to "finnish")
   const [language, setLanguage] = useState("finnish");
@@ -229,9 +235,16 @@ useEffect(() => {
     });
     wordsSubmitted.forEach((submission) => {
       const count = wordCount[submission.word.toLowerCase()];
-      if (count === 1) matchResults[submission.userId] = "red";
-      else if (count === 2) matchResults[submission.userId] = "blue";
-      else matchResults[submission.userId] = "green";
+      if (count === 1){
+        matchResults[submission.userId] = "red";
+
+      } 
+      else if (count === 2) {
+        matchResults[submission.userId] = "blue";
+      }
+      else {
+        matchResults[submission.userId] = "green";
+      }
     });
     setWordMatches(matchResults);
   };
@@ -328,10 +341,16 @@ useEffect(() => {
   
       if (count === 1) {
         newScores[userId] = (newScores[userId] || 0);
+        soundZeroPoints.play().catch((error) => console.error("🔇 Error playing sound:", error));
+
       } else if (count === 2) {
         newScores[userId] = (newScores[userId] || 0) + 3;
+        soundThreePoints.play().catch((error) => console.error("🔇 Error playing sound:", error));
+
       } else {
         newScores[userId] = (newScores[userId] || 0) + 1;
+        soundOnePoint.play().catch((error) => console.error("🔇 Error playing sound:", error));
+
       }
     });
   
