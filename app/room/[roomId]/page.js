@@ -52,13 +52,15 @@ export default function RoomPage() {
   // New state for language selection (default to "finnish")
   const [language, setLanguage] = useState("finnish");
 
+
   useEffect(() => {
   if (!roomId) return;
   const roomRef = doc(db, "rooms", roomId);
-  let lastWordPrompt = "";
+
   const unsubscribe = onSnapshot(roomRef, (docSnap) => {
     if (docSnap.exists()) {
       const data = docSnap.data();
+      let lastWordPrompt = "";
       setLastRoundScores(data.lastRoundScores || []); // Get last round scores from Firestore
       setLastRoundWords(data.lastRoundWords || []);
       setShowLastRound(data.showLastRound || false);
@@ -68,7 +70,6 @@ export default function RoomPage() {
         lastWordPrompt = data.currentRound.wordPrompt; // Update the last known word
       }
     }
-    return () => unsubscribe(); // Cleanup listener
   });
 
   return () => unsubscribe();
