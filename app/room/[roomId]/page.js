@@ -53,27 +53,35 @@ export default function RoomPage() {
   const [language, setLanguage] = useState("finnish");
 
 
+  const lastWordPromptRef = useRef("");
+
   useEffect(() => {
-  if (!roomId) return;
-  const roomRef = doc(db, "rooms", roomId);
-
-  const unsubscribe = onSnapshot(roomRef, (docSnap) => {
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      let lastWordPrompt = "";
-      setLastRoundScores(data.lastRoundScores || []); // Get last round scores from Firestore
-      setLastRoundWords(data.lastRoundWords || []);
-      setShowLastRound(data.showLastRound || false);
-      // 🔊 Play beep sound when a new word is generated
-      if (data.currentRound?.wordPrompt && data.currentRound.wordPrompt !== lastWordPrompt) {
-        beepSound.play().catch((error) => console.error("🔇 Error playing sound:", error));
-        lastWordPrompt = data.currentRound.wordPrompt; // Update the last known word
+    if (!roomId) return;
+    const roomRef = doc(db, "rooms", roomId);
+  
+    const unsubscribe = onSnapshot(roomRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setLastRoundScores(data.lastRoundScores || []);
+        setLastRoundWords(data.lastRoundWords || []);
+        setShowLastRound(data.showLastRound || false);
+  
+        // 🔊 Play beep sound only when a new word is generated
+        if (
+          data.currentRound?.wordPrompt &&
+          data.currentRound.wordPrompt !== lastWordPromptRef.current
+        ) {
+          beepSound.play().catch((error) =>
+            console.error("🔇 Error playing sound:", error)
+          );
+          lastWordPromptRef.current = data.currentRound.wordPrompt; // Update stored word
+        }
       }
-    }
-  });
-
-  return () => unsubscribe();
-}, [roomId]);
+    });
+  
+    return () => unsubscribe();
+  }, [roomId]);
+  
 
 useEffect(() => {
     const handleUnload = () => {
