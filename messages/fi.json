@@ -13,6 +13,7 @@
     },
     "room": {
     "roomid": "Huoneen ID",
+    "host": "Isäntä",
     "scoreboard": "Tulostaulu",
     "nickname": "Nimimerkki",
     "points": "Pisteet",

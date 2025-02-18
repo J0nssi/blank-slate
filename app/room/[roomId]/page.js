@@ -40,6 +40,8 @@ export default function RoomPage() {
   const t = useTranslations('room');
   const inputRef = useRef(null);
   const [showLastRound, setShowLastRound] = useState(false);
+  const beepSound = new Audio("/beep.mp3");
+  beepSound.volume = 0.02; // 🔊 Reduce volume to 50%
 
   // New state for language selection (default to "finnish")
   const [language, setLanguage] = useState("finnish");
@@ -47,14 +49,20 @@ export default function RoomPage() {
   useEffect(() => {
   if (!roomId) return;
   const roomRef = doc(db, "rooms", roomId);
+  let lastWordPrompt = "";
   const unsubscribe = onSnapshot(roomRef, (docSnap) => {
     if (docSnap.exists()) {
       const data = docSnap.data();
       setLastRoundScores(data.lastRoundScores || []); // Get last round scores from Firestore
       setLastRoundWords(data.lastRoundWords || []);
       setShowLastRound(data.showLastRound || false);
-      
+      // 🔊 Play beep sound when a new word is generated
+      if (data.currentRound?.wordPrompt && data.currentRound.wordPrompt !== lastWordPrompt) {
+        beepSound.play().catch((error) => console.error("🔇 Error playing sound:", error));
+        lastWordPrompt = data.currentRound.wordPrompt; // Update the last known word
+      }
     }
+    return () => unsubscribe(); // Cleanup listener
   });
 
   return () => unsubscribe();
