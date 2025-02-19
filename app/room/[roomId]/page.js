@@ -350,28 +350,31 @@ useEffect(() => {
     });
   
     roomData.currentRound.wordsSubmitted.forEach((submission) => {
-      const userId = submission.userId;
+      const playerId = submission.userId;
       const word = submission.word.toLowerCase();
       const count = wordCount[word];
-  
+
+      if (!newScores[playerId]) newScores[playerId] = 0;
+
       if (count === 1) {
-        newScores[userId] = (newScores[userId] || 0);
-        if (playerId === userId) {
-          soundZeroPoints.play().catch((error) => console.error("🔇 Error playing sound:", error));
-        }
+          // Only play sound for the current player
+          if (playerId === userId) {
+              soundZeroPoints.play().catch((error) => console.error("🔇 Error playing sound:", error));
+          }
 
       } else if (count === 2) {
-        newScores[userId] = (newScores[userId] || 0) + 3;
-        if (playerId === userId) {
-          soundThreePoints.play().catch((error) => console.error("🔇 Error playing sound:", error));
-        }
+          newScores[playerId] += 3;
+          if (playerId === userId) {
+              soundThreePoints.play().catch((error) => console.error("🔇 Error playing sound:", error));
+          }
+
       } else {
-        newScores[userId] = (newScores[userId] || 0) + 1;
-        if (playerId === userId) {
-          soundOnePoint.play().catch((error) => console.error("🔇 Error playing sound:", error));
-        }
+          newScores[playerId] += 1;
+          if (playerId === userId) {
+              soundOnePoint.play().catch((error) => console.error("🔇 Error playing sound:", error));
+          }
       }
-    });
+  });
   
     // Ensure only the host updates scores
     if (roomData.hostId === userId) {
