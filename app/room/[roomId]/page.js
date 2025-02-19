@@ -356,16 +356,20 @@ useEffect(() => {
   
       if (count === 1) {
         newScores[userId] = (newScores[userId] || 0);
-        soundZeroPoints.play().catch((error) => console.error("🔇 Error playing sound:", error));
+        if (playerId === userId) {
+          soundZeroPoints.play().catch((error) => console.error("🔇 Error playing sound:", error));
+        }
 
       } else if (count === 2) {
         newScores[userId] = (newScores[userId] || 0) + 3;
-        soundThreePoints.play().catch((error) => console.error("🔇 Error playing sound:", error));
-
+        if (playerId === userId) {
+          soundThreePoints.play().catch((error) => console.error("🔇 Error playing sound:", error));
+        }
       } else {
         newScores[userId] = (newScores[userId] || 0) + 1;
-        soundOnePoint.play().catch((error) => console.error("🔇 Error playing sound:", error));
-
+        if (playerId === userId) {
+          soundOnePoint.play().catch((error) => console.error("🔇 Error playing sound:", error));
+        }
       }
     });
   
