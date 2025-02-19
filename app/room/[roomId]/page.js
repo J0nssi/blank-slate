@@ -412,7 +412,7 @@ useEffect(() => {
   <div className="w-full max-w-2xl bg-gray-800 p-4 rounded-lg shadow-lg mb-6 relative">
     {/* Minimize/Maximize Button */}
     <button 
-      onClick={toggleScoreboardVisibility}
+      onClick={toggleScoreboard}
       className="absolute top-2 right-2 bg-gray-600 text-white text-xs rounded-full p-1 hover:bg-gray-500 focus:outline-none"
     >
       {/* Toggle icon based on the current state */}
