@@ -13,6 +13,8 @@
     },
     "room": {
     "roomid": "Room ID",
+    "hide_scoreboard": "Hide scoreboard",
+    "show_scoreboard": "Show scoreboard",
     "scoreboard": "Scoreboard",
     "nickname": "Nickname",
     "points": "Points",

@@ -51,6 +51,12 @@ export default function RoomPage() {
 
   // New state for language selection (default to "finnish")
   const [language, setLanguage] = useState("finnish");
+  const [isScoreboardVisible, setIsScoreboardVisible] = useState(true); // State to control visibility
+
+// Toggle the scoreboard visibility
+const toggleScoreboard = () => {
+  setIsScoreboardVisible(!isScoreboardVisible);
+};
 
 
   const lastWordPromptRef = useRef("");
@@ -400,66 +406,102 @@ useEffect(() => {
   return (
     <div className="flex flex-col items-center min-h-screen bg-gray-900 text-white p-6">
       <h1 className="text-4xl font-bold mb-4">{t('roomid')}: {roomId}</h1>
-
       {/* Scoreboard Section */}
-{lastRoundScores && showLastRound && lastRoundScores.length > 0 ? (
+      {lastRoundScores && showLastRound && lastRoundScores.length > 0 ? (
   // Last Round Scoreboard
-  <div className="w-full max-w-2xl bg-gray-800 p-4 rounded-lg shadow-lg mb-6">
+  <div className="w-full max-w-2xl bg-gray-800 p-4 rounded-lg shadow-lg mb-6 relative">
+    {/* Minimize/Maximize Button */}
+    <button 
+      onClick={toggleScoreboardVisibility}
+      className="absolute top-2 right-2 bg-gray-600 text-white text-xs rounded-full p-1 hover:bg-gray-500 focus:outline-none"
+    >
+      {/* Toggle icon based on the current state */}
+      {isScoreboardVisible ? '🔽' : '🔼'}
+    </button>
+
+    {/* Always visible scoreboard title */}
     <h2 className="text-2xl font-bold text-center mb-4">🏆 Last Round Scoreboard 🏆</h2>
-    <div className="grid grid-cols-2 border-b border-gray-600 pb-2 text-gray-400">
-      <div className="font-semibold">{t('nickname')}</div>
-      <div className="font-semibold text-right">{t('points')}</div>
-    </div>
-    {lastRoundScores
-      .slice()
-      .sort((a, b) => (b.score || 0) - (a.score || 0))
-      .map((player, index) => (
-        <div
-          key={player.userId}
-          className={`grid grid-cols-2 py-2 border-b border-gray-700 text-lg
-            ${index === 0 ? "text-yellow-400 font-bold" : ""} 
-            ${index === 1 ? "text-gray-300 font-semibold" : ""} 
-            ${index === 2 ? "text-amber-600" : ""}`}
-        >
-          <div className="flex items-center">
-            {index === 0 && <span className="mr-2">🥇</span>}
-            {index === 1 && <span className="mr-2">🥈</span>}
-            {index === 2 && <span className="mr-2">🥉</span>}
-            {player.nickname}
-          </div>
-          <div className="text-right">{player.score || 0}</div>
+    
+    {/* Only show players and scores if isScoreboardVisible is true */}
+    {isScoreboardVisible && (
+      <div>
+        <div className="grid grid-cols-2 border-b border-gray-600 pb-2 text-gray-400">
+          <div className="font-semibold">{t('nickname')}</div>
+          <div className="font-semibold text-right">{t('points')}</div>
         </div>
-      ))}
+        {lastRoundScores
+          .slice()
+          .sort((a, b) => (b.score || 0) - (a.score || 0))
+          .map((player, index) => (
+            <div
+              key={player.userId}
+              className={`grid grid-cols-2 py-2 border-b border-gray-700 text-lg
+                ${index === 0 ? "text-yellow-400 font-bold" : ""} 
+                ${index === 1 ? "text-gray-300 font-semibold" : ""} 
+                ${index === 2 ? "text-amber-600" : ""}`}
+            >
+              <div className="flex items-center">
+                {index === 0 && <span className="mr-2">🥇</span>}
+                {index === 1 && <span className="mr-2">🥈</span>}
+                {index === 2 && <span className="mr-2">🥉</span>}
+                {player.nickname}
+              </div>
+              <div className="text-right">{player.score || 0}</div>
+            </div>
+          ))}
+      </div>
+    )}
   </div>
 ) : (
   // Normal Scoreboard
-  <div className="w-full max-w-2xl bg-gray-800 p-4 rounded-lg shadow-lg mb-6">
+  <div className="w-full max-w-2xl bg-gray-800 p-4 rounded-lg shadow-lg mb-6 relative">
+    {/* Minimize/Maximize Button */}
+    <button 
+      onClick={toggleScoreboard}
+      className="absolute top-2 right-2 bg-gray-600 text-white text-xs rounded-full p-1 hover:bg-gray-500 focus:outline-none"
+    >
+      {/* Toggle icon based on the current state */}
+      {isScoreboardVisible ? '🔽' : '🔼'}
+    </button>
+
+    {/* Always visible scoreboard title */}
     <h2 className="text-xl font-semibold text-center mb-4">📜 {t('scoreboard')}</h2>
-    <div className="grid grid-cols-2 border-b border-gray-600 pb-2 text-gray-400">
-      <div className="font-semibold">{t('nickname')}</div>
-      <div className="font-semibold text-right">{t('points')}</div>
-    </div>
-    {players
-      .slice()
-      .sort((a, b) => (b.score || 0) - (a.score || 0))
-      .map((player, index) => (
-        <div
-          key={player.userId}
-          className={`grid grid-cols-2 py-2 border-b border-gray-700 text-lg
-            ${index === 0 ? "text-yellow-400 font-bold" : ""} 
-            ${index === 1 ? "text-gray-300 font-semibold" : ""} 
-            ${index === 2 ? "text-amber-600" : ""}`}
-        >
-          <div>{player.nickname}</div>
-          <div className="text-right">{player.score || 0}</div>
+
+    {/* Only show players and scores if isScoreboardVisible is true */}
+    {isScoreboardVisible && (
+      <div>
+        <div className="grid grid-cols-2 border-b border-gray-600 pb-2 text-gray-400">
+          <div className="font-semibold">{t('nickname')}</div>
+          <div className="font-semibold text-right">{t('points')}</div>
         </div>
-      ))}
+        {players
+          .slice()
+          .sort((a, b) => (b.score || 0) - (a.score || 0))
+          .map((player, index) => (
+            <div
+              key={player.userId}
+              className={`grid grid-cols-2 py-2 border-b border-gray-700 text-lg
+                ${index === 0 ? "text-yellow-400 font-bold" : ""} 
+                ${index === 1 ? "text-gray-300 font-semibold" : ""} 
+                ${index === 2 ? "text-amber-600" : ""}`}
+            >
+              <div>{player.nickname}</div>
+              <div className="text-right">{player.score || 0}</div>
+            </div>
+          ))}
+      </div>
+    )}
   </div>
 )}
 
+
+
+
+
+
       {/* Player Cards Section */}
       {gameStarted && (
-        <div className="w-full max-w-2xl grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
+        <div className="w-full max-w-2xl grid grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
           {players.map((player) => (
             <div
               key={player.userId}

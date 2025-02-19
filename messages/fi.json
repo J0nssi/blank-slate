@@ -13,8 +13,9 @@
     },
     "room": {
     "roomid": "Huoneen ID",
-    "host": "Isäntä",
     "scoreboard": "Tulostaulu",
+    "hide_scoreboard": "Piilota tulostaulu",
+    "show_scoreboard": "Näytä tulostaulu",
     "nickname": "Nimimerkki",
     "points": "Pisteet",
     "submitted": "✅ Lukittu",
