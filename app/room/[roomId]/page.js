@@ -45,15 +45,24 @@ export default function RoomPage() {
   const soundThreePoints = new Audio("/threepoints.mp3");
   const soundZeroPoints = new Audio("/zeropoints.mp3");
   const clappingSound = new Audio("/clapping.mp3");
+  const soundOof = new Audio("/oof.mp3");
+  const timerSound = new Audio("/timer.mp3");
   beepSound.volume = 0.02; // 🔊 Reduce volume to 50%
   soundThreePoints.volume = 0.05;
   soundZeroPoints.volume = 0.05;
   soundOnePoint.volume = 0.05;
   clappingSound.volume = 0.05;
+  soundOof.volume = 0.05;
+  timerSound.volume = 0.05;
 
   // New state for language selection (default to "finnish")
   const [language, setLanguage] = useState("finnish");
   const [isScoreboardVisible, setIsScoreboardVisible] = useState(true); // State to control visibility
+
+  // Lisää uusi tila ajastimelle
+  const [submissionTimer, setSubmissionTimer] = useState(30); // Oletusarvo 30 sekuntia
+  const [currentTimer, setCurrentTimer] = useState(null);
+  const [submissionTimeLeft, setSubmissionTimeLeft] = useState(null);
 
 // Toggle the scoreboard visibility
 const toggleScoreboard = () => {
@@ -196,19 +205,19 @@ useEffect(() => {
   const updateScores = async (newScores) => {
     const roomRef = doc(db, "rooms", roomId);
     
+    // Calculate new scores
     const updatedPlayers = players.map((player) => ({
       ...player,
       score: (player.score || 0) + (newScores[player.userId] || 0),
     }));
 
+    // Check for a winner (25+ points)
     const winner = updatedPlayers.find((player) => player.score >= 25);
     if (winner) {
       setGameEnded(true);
       setWinner(winner);
       setLastRoundWords(roomData.currentRound.wordsSubmitted);
       setShowLastRound(true);
-
-      clappingSound.play().catch((error) => console.error("🔇 Error playing clapping sound:", error));
 
       // Store last round scores **before resetting** the Firestore document
       const lastRoundScores = updatedPlayers.map(player => ({
@@ -302,23 +311,23 @@ useEffect(() => {
   // Modified handleStartGame now passes the language parameter
   const handleStartGame = async () => {
     if (isHost && !gameStarted) {
-      setIsLoading(true);
-      console.log("🔍 Starting game with userId:", userId);  // Ensure this logs the correct userId
+      try {
+        setIsLoading(true);
+        console.log("🎮 Starting game with settings:", {
+          roomId,
+          language,
+          submissionTimer,
+          userId
+        });
 
-      await startGame(roomId, language);
-      setIsLoading(false);
-      setGameEnded(false);
-        setShowLastRound(false); // Switch back to normal scoreboard
-        
-        setLastRoundWords([]);
-        setLastRoundScores([]); // Clear after 10s
-        setShowResults(false);
-        setResultsProcessed(false);
-        setHasSubmitted(false);
-        setWordMatches({});
-        setPlayerCardColors({});
-        setWord("");
-        resetGameState();
+        await startGame(roomId, language, submissionTimer);
+        console.log("✅ Game started successfully");
+        setIsLoading(false);
+        setGameEnded(false);
+      } catch (error) {
+        console.error("❌ Error in handleStartGame:", error);
+        setIsLoading(false);
+      }
     }
   };
 
@@ -341,7 +350,7 @@ useEffect(() => {
 
   const processResults = async () => {
     if (resultsProcessed || !roomData || !roomData.currentRound) return;
-    setResultsProcessed(true); // Ensure this runs only once per round
+    setResultsProcessed(true); // Varmista, että tämä suoritetaan vain kerran kierroksittain
   
     const wordCount = {};
     const newScores = {};
@@ -358,32 +367,36 @@ useEffect(() => {
 
       if (!newScores[playerId]) newScores[playerId] = 0;
 
-      if (count === 1) {
-          // Only play sound for the current player
-          if (playerId === userId) {
-              soundZeroPoints.play().catch((error) => console.error("🔇 Error playing sound:", error));
-          }
-
+      if (word === "-") {
+        // Pelaaja on lähettänyt merkin "-"
+        newScores[playerId] -= 1; // Vähennä 1 piste
+        if (playerId === userId) {
+          soundOof.play().catch((error) => console.error("🔇 Error playing oof sound:", error)); // Soita oof-ääni
+        }
+      } else if (count === 1) {
+        // Vain nykyiselle pelaajalle soitetaan ääni
+        if (playerId === userId) {
+          soundZeroPoints.play().catch((error) => console.error("🔇 Error playing sound:", error));
+        }
       } else if (count === 2) {
-          newScores[playerId] += 3;
-          if (playerId === userId) {
-              soundThreePoints.play().catch((error) => console.error("🔇 Error playing sound:", error));
-          }
-
+        newScores[playerId] += 3;
+        if (playerId === userId) {
+          soundThreePoints.play().catch((error) => console.error("🔇 Error playing sound:", error));
+        }
       } else {
-          newScores[playerId] += 1;
-          if (playerId === userId) {
-              soundOnePoint.play().catch((error) => console.error("🔇 Error playing sound:", error));
-          }
+        newScores[playerId] += 1;
+        if (playerId === userId) {
+          soundOnePoint.play().catch((error) => console.error("🔇 Error playing sound:", error));
+        }
       }
-  });
+    });
   
-    // Ensure only the host updates scores
+    // Varmista, että vain isäntä päivittää pisteet
     if (roomData.hostId === userId) {
       await updateScores(newScores);
     }
   
-    if (roomData.gameEnded) return; // Stop if game has ended
+    if (roomData.gameEnded) return; // Lopeta, jos peli on päättynyt
   
     let countdown = 10;
     setNextRoundTimer(countdown);
@@ -404,13 +417,61 @@ useEffect(() => {
         setWord("");
         setResultsProcessed(false);
   
-        generateNewWord(roomId, userId, language); // Keep the game going
+        generateNewWord(roomId, userId, language); // Jatka peliä
       }
     }, 1000);
   };
 
   const allPlayersSubmitted =
     roomData?.currentRound?.wordsSubmitted?.length === players.length;
+
+  // Lisää uusi useEffect ajastimen hallintaan
+  useEffect(() => {
+    if (!roomData?.currentRound?.wordPrompt || !gameStarted) return;
+
+    // Start a new timer when a word is given
+    const timerDuration = roomData.submissionTimer * 1000; // Convert to milliseconds
+    const startTime = Date.now();
+    const timerSound = new Audio("/timer.mp3"); // Load the timer sound
+    timerSound.volume = 0.05; // Adjust volume as needed
+
+    let hasPlayedSound = false; // Flag to track if the sound has been played
+
+    const timer = setInterval(() => {
+      const timeLeft = Math.max(0, timerDuration - (Date.now() - startTime));
+      setSubmissionTimeLeft(Math.ceil(timeLeft / 1000));
+
+      // Play the timer sound only once when there are 5 seconds left
+      if (timeLeft <= 5000 && timeLeft > 0 && !hasPlayedSound) {
+        timerSound.play().catch((error) => console.error("🔇 Error playing timer sound:", error));
+        hasPlayedSound = true; // Set the flag to indicate the sound has played
+      }
+
+      // Stop the sound when the timer runs out
+      if (timeLeft <= 0) {
+        timerSound.pause(); // Stop the sound
+        timerSound.currentTime = 0; // Reset the sound to the beginning
+        handleAutoSubmit(); // Automatically submit "-"
+        clearInterval(timer);
+      }
+    }, 100);
+
+    setCurrentTimer(timer);
+
+    return () => clearInterval(timer);
+  }, [roomData?.currentRound?.wordPrompt, gameStarted]);
+
+  // Lisää automaattinen lähetys
+  const handleAutoSubmit = async () => {
+    if (!hasSubmitted) {
+      const roomRef = doc(db, "rooms", roomId);
+      await updateDoc(roomRef, {
+        'currentRound.wordsSubmitted': arrayUnion({ userId, word: "-" }),
+      });
+      setHasSubmitted(true);
+      setWord("");
+    }
+  };
 
   return (
     <div className="flex flex-col items-center min-h-screen bg-gray-900 text-white p-6">
@@ -594,6 +655,22 @@ useEffect(() => {
             </div>
           )}
           </div>
+          <div className="ml-4">
+        <span className="text-lg text-gray-300">{t('submission_timer')}</span>
+        <select
+          value={submissionTimer}
+          onChange={(e) => setSubmissionTimer(Number(e.target.value))}
+          className="p-2 ml-4 text-lg border rounded-md text-black"
+        >
+          <option value="10">10s</option>
+          <option value="20">20s</option>
+          <option value="30">30s</option>
+          <option value="45">45s</option>
+          <option value="60">60s</option>
+          <option value="90">90s</option>
+          <option value="120">120s</option>
+        </select>
+      </div>
           {!winner && (
           <button
             onClick={handleStartGame}
@@ -602,6 +679,7 @@ useEffect(() => {
           >
             {isLoading ? t('starting_game') : t('start_game')}
           </button>
+          
           )}
         </div>
       )}
@@ -620,6 +698,13 @@ useEffect(() => {
               {t('new_round_starts_in')} {nextRoundTimer} {t('after_seconds')}
             </p>
           )}
+          {gameStarted && submissionTimeLeft !== null && !hasSubmitted && (
+  <div className="mt-2">
+    <p className={`text-xl font-bold ${submissionTimeLeft <= 5 ? 'text-red-500' : 'text-white'}`}>
+      {t('time_left')}: {submissionTimeLeft}s
+    </p>
+  </div>
+)}
           <div className="mt-4">
             <input
               ref={inputRef}

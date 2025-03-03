@@ -33,6 +33,8 @@
     "submit_word": "Submit Word",
     "starting_game": "Starting game...",
     "new_game": "New game available in",
-    "last_round_scoreboard": "🏆 Last round Scoreboard 🏆"
+    "last_round_scoreboard": "🏆 Last round Scoreboard 🏆",
+    "submission_timer": "Submission Timer",
+    "time_left": "Time left"
   }
 }
