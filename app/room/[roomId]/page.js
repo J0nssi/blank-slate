@@ -44,10 +44,12 @@ export default function RoomPage() {
   const soundOnePoint = new Audio("/onepoint.mp3");
   const soundThreePoints = new Audio("/threepoints.mp3");
   const soundZeroPoints = new Audio("/zeropoints.mp3");
+  const clappingSound = new Audio("/clapping.mp3");
   beepSound.volume = 0.02; // 🔊 Reduce volume to 50%
   soundThreePoints.volume = 0.05;
   soundZeroPoints.volume = 0.05;
   soundOnePoint.volume = 0.05;
+  clappingSound.volume = 0.05;
 
   // New state for language selection (default to "finnish")
   const [language, setLanguage] = useState("finnish");
@@ -194,19 +196,19 @@ useEffect(() => {
   const updateScores = async (newScores) => {
     const roomRef = doc(db, "rooms", roomId);
     
-    // Calculate new scores
     const updatedPlayers = players.map((player) => ({
       ...player,
       score: (player.score || 0) + (newScores[player.userId] || 0),
     }));
 
-    // Check for a winner (25+ points)
     const winner = updatedPlayers.find((player) => player.score >= 25);
     if (winner) {
       setGameEnded(true);
       setWinner(winner);
       setLastRoundWords(roomData.currentRound.wordsSubmitted);
       setShowLastRound(true);
+
+      clappingSound.play().catch((error) => console.error("🔇 Error playing clapping sound:", error));
 
       // Store last round scores **before resetting** the Firestore document
       const lastRoundScores = updatedPlayers.map(player => ({
