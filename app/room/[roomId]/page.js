@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
   db,
@@ -46,7 +46,8 @@ export default function RoomPage() {
   const soundZeroPoints = new Audio("/zeropoints.mp3");
   const clappingSound = new Audio("/clapping.mp3");
   const soundOof = new Audio("/oof.mp3");
-  const timerSound = new Audio("/timer.mp3");
+  const timerSound = useRef(new Audio("/timer.mp3"));
+  const hasPlayedSoundRef = useRef(false);
   beepSound.volume = 0.02; // 🔊 Reduce volume to 50%
   soundThreePoints.volume = 0.05;
   soundZeroPoints.volume = 0.05;
@@ -61,7 +62,6 @@ export default function RoomPage() {
 
   // Lisää uusi tila ajastimelle
   const [submissionTimer, setSubmissionTimer] = useState(30); // Oletusarvo 30 sekuntia
-  const [currentTimer, setCurrentTimer] = useState(null);
   const [submissionTimeLeft, setSubmissionTimeLeft] = useState(null);
 
 // Toggle the scoreboard visibility
@@ -425,53 +425,75 @@ useEffect(() => {
   const allPlayersSubmitted =
     roomData?.currentRound?.wordsSubmitted?.length === players.length;
 
-  // Lisää uusi useEffect ajastimen hallintaan
-  useEffect(() => {
-    if (!roomData?.currentRound?.wordPrompt || !gameStarted) return;
 
-    // Start a new timer when a word is given
-    const timerDuration = roomData.submissionTimer * 1000; // Convert to milliseconds
-    const startTime = Date.now();
-    const timerSound = new Audio("/timer.mp3"); // Load the timer sound
-    timerSound.volume = 0.05; // Adjust volume as needed
+// Memoize handleAutoSubmit
+const handleAutoSubmit = useCallback(async () => {
+  if (!hasSubmitted) {
+    const roomRef = doc(db, "rooms", roomId);
+    await updateDoc(roomRef, {
+      'currentRound.wordsSubmitted': arrayUnion({ userId, word: "-" }),
+    });
+    setHasSubmitted(true);
+    setWord("");
+  }
+}, [hasSubmitted, roomId, userId, setWord, setHasSubmitted]);
 
-    let hasPlayedSound = false; // Flag to track if the sound has been played
+useEffect(() => {
+  if (!roomData?.currentRound?.wordPrompt || !gameStarted) return;
 
-    const timer = setInterval(() => {
-      const timeLeft = Math.max(0, timerDuration - (Date.now() - startTime));
-      setSubmissionTimeLeft(Math.ceil(timeLeft / 1000));
+  // Reset the sound flag when starting a new round
+  hasPlayedSoundRef.current = false;
+  
+  // Set volume once
+  timerSound.current.volume = 0.05;
+  
+  const timerDuration = roomData.submissionTimer * 1000;
+  const startTime = Date.now();
 
-      // Play the timer sound only once when there are 5 seconds left
-      if (timeLeft <= 5000 && timeLeft > 0 && !hasPlayedSound) {
-        timerSound.play().catch((error) => console.error("🔇 Error playing timer sound:", error));
-        hasPlayedSound = true; // Set the flag to indicate the sound has played
-      }
+  const timer = setInterval(() => {
+    const timeLeft = Math.max(0, timerDuration - (Date.now() - startTime));
+    setSubmissionTimeLeft(Math.ceil(timeLeft / 1000));
 
-      // Stop the sound when the timer runs out
-      if (timeLeft <= 0) {
-        timerSound.pause(); // Stop the sound
-        timerSound.currentTime = 0; // Reset the sound to the beginning
-        handleAutoSubmit(); // Automatically submit "-"
-        clearInterval(timer);
-      }
-    }, 100);
+    // Tarkista onko pelaaja lähettänyt sanan
+    const hasPlayerSubmitted = roomData?.currentRound?.wordsSubmitted?.some(
+      submission => submission.userId === userId
+    );
 
-    setCurrentTimer(timer);
-
-    return () => clearInterval(timer);
-  }, [roomData?.currentRound?.wordPrompt, gameStarted]);
-
-  // Lisää automaattinen lähetys
-  const handleAutoSubmit = async () => {
-    if (!hasSubmitted) {
-      const roomRef = doc(db, "rooms", roomId);
-      await updateDoc(roomRef, {
-        'currentRound.wordsSubmitted': arrayUnion({ userId, word: "-" }),
-      });
-      setHasSubmitted(true);
-      setWord("");
+    // Play the timer sound only once when there are 5 seconds left and player hasn't submitted
+    if (timeLeft <= 5000 && timeLeft > 0 && !hasPlayerSubmitted && !hasPlayedSoundRef.current && !showResults) {
+      timerSound.current.play().catch((error) => 
+        console.error("🔇 Error playing timer sound:", error)
+      );
+      hasPlayedSoundRef.current = true;
     }
+
+    // Stop the sound when the timer runs out or player has submitted
+    if (timeLeft <= 0 || hasPlayerSubmitted) {
+      timerSound.current.pause();
+      timerSound.current.currentTime = 0;
+    }
+
+    // Handle auto-submit only when time runs out
+    if (timeLeft <= 0) {
+      handleAutoSubmit();
+      clearInterval(timer);
+    }
+  }, 100);
+
+  // Cleanup function
+  return () => {
+    clearInterval(timer);
+    timerSound.current.pause();
+    timerSound.current.currentTime = 0;
   };
+}, [
+  roomData?.currentRound?.wordPrompt, 
+  gameStarted, 
+  roomData?.submissionTimer,
+  handleAutoSubmit
+]);
+
+
 
   return (
     <div className="flex flex-col items-center min-h-screen bg-gray-900 text-white p-6">
