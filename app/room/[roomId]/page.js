@@ -13,6 +13,7 @@ import {
 } from "../../../lib/firebase";
 import { doc, onSnapshot, updateDoc, arrayUnion, getDoc } from "firebase/firestore";
 import { useTranslations } from 'next-intl';
+import ReactConfetti from 'react-confetti';
 
 export default function RoomPage() {
   const router = useRouter();
@@ -61,14 +62,19 @@ export default function RoomPage() {
   const [isScoreboardVisible, setIsScoreboardVisible] = useState(true); // State to control visibility
 
   // Lisää uusi tila ajastimelle
-  const [submissionTimer, setSubmissionTimer] = useState(30); // Oletusarvo 30 sekuntia
+  const [submissionTimer, setSubmissionTimer] = useState(-1); // -1 tarkoittaa rajoittamatonta
   const [submissionTimeLeft, setSubmissionTimeLeft] = useState(null);
 
-// Toggle the scoreboard visibility
-const toggleScoreboard = () => {
-  setIsScoreboardVisible(!isScoreboardVisible);
-};
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [windowSize, setWindowSize] = useState({
+    width: typeof window !== 'undefined' ? window.innerWidth : 0,
+    height: typeof window !== 'undefined' ? window.innerHeight : 0
+  });
 
+  // Toggle the scoreboard visibility
+  const toggleScoreboard = () => {
+    setIsScoreboardVisible(!isScoreboardVisible);
+  };
 
   const lastWordPromptRef = useRef("");
 
@@ -79,25 +85,40 @@ const toggleScoreboard = () => {
     const unsubscribe = onSnapshot(roomRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
+        const isNewLastRound = !showLastRound && data.showLastRound;
+        
         setLastRoundScores(data.lastRoundScores || []);
         setLastRoundWords(data.lastRoundWords || []);
         setShowLastRound(data.showLastRound || false);
+        
+        // Aktivoi konfetti ja ääni vain kun peli päättyy ja siirrytään viimeisen kierroksen näkymään
+        if (data.gameEnded && !showConfetti && isNewLastRound) {
+          setShowConfetti(true);
+          clappingSound.play().catch((error) => console.error("🔇 Error playing clapping sound:", error));
+          
+          // Piilota konfetti 10 sekunnin kuluttua
+          setTimeout(() => {
+            setShowConfetti(false);
+          }, 10000);
+        }
   
-        // 🔊 Play beep sound only when a new word is generated
+        // 🔊 Play beep sound only when a new word is generated and game is active
         if (
           data.currentRound?.wordPrompt &&
-          data.currentRound.wordPrompt !== lastWordPromptRef.current
+          data.currentRound.wordPrompt !== lastWordPromptRef.current &&
+          data.gameStarted &&
+          !data.gameEnded
         ) {
           beepSound.play().catch((error) =>
             console.error("🔇 Error playing sound:", error)
           );
-          lastWordPromptRef.current = data.currentRound.wordPrompt; // Update stored word
+          lastWordPromptRef.current = data.currentRound.wordPrompt;
         }
       }
     });
   
     return () => unsubscribe();
-  }, [roomId]);
+  }, [roomId, showConfetti, showLastRound]);
   
 
 useEffect(() => {
@@ -200,7 +221,20 @@ useEffect(() => {
     setHasSubmitted(false);
   }, [roomData?.currentRound?.wordPrompt]);
 
+  // Add window resize listener
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowSize({
+        width: window.innerWidth,
+        height: window.innerHeight
+      });
+    };
 
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
+  }, []);
 
   const updateScores = async (newScores) => {
     const roomRef = doc(db, "rooms", roomId);
@@ -223,34 +257,33 @@ useEffect(() => {
       const lastRoundScores = updatedPlayers.map(player => ({
         userId: player.userId,
         nickname: player.nickname,
-        score: player.score, // Save scores before reset
+        score: player.score,
       }));
 
       // ✅ Save last round scores & words to Firestore
       await updateDoc(roomRef, {
-        lastRoundScores: lastRoundScores, // Store last round scores in Firestore
+        lastRoundScores: lastRoundScores,
         lastRoundWords: roomData.currentRound.wordsSubmitted,
-        players: updatedPlayers.map(p => ({ ...p, score: 0 })), // Reset scores
-        gameStarted: false, // Return to lobby
-        gameEnded: true,
-        showLastRound: true, // Flag to show the last round scoreboard
+        players: updatedPlayers.map(p => ({ ...p, score: 0 })),
+        gameStarted: false,
+        gameEnded: true, // Tämä laukaisee konfetin ja äänen kaikille
+        showLastRound: true,
       });
 
       setTimeout(() => {
-        setShowLastRound(false); // Switch back to normal scoreboard
+        setShowLastRound(false);
         updateDoc(roomRef, {
-          showLastRound: false, // Set back to false in Firestore
+          showLastRound: false,
+          gameEnded: false, // Nollaa voittotila
         });
       }, 10000);
 
-      return; // Stop further updates
+      return;
     }
 
     // If no winner, update Firestore with new scores
     await updateDoc(roomRef, { players: updatedPlayers });
-};
-
-
+  };
 
   const checkWordMatches = (wordsSubmitted) => {
     const wordCount = {};
@@ -260,15 +293,16 @@ useEffect(() => {
       wordCount[word] = (wordCount[word] || 0) + 1;
     });
     wordsSubmitted.forEach((submission) => {
-      const count = wordCount[submission.word.toLowerCase()];
-      if (count === 1){
+      const word = submission.word.toLowerCase();
+      const count = wordCount[word];
+      
+      if (word === "-") {
+        matchResults[submission.userId] = "black";
+      } else if (count === 1) {
         matchResults[submission.userId] = "red";
-
-      } 
-      else if (count === 2) {
+      } else if (count === 2) {
         matchResults[submission.userId] = "blue";
-      }
-      else {
+      } else {
         matchResults[submission.userId] = "green";
       }
     });
@@ -447,6 +481,12 @@ useEffect(() => {
   // Set volume once
   timerSound.current.volume = 0.05;
   
+  // Jos ajastin on -1 (rajoittamaton), älä käynnistä ajastinta
+  if (roomData.submissionTimer === -1) {
+    setSubmissionTimeLeft(null);
+    return;
+  }
+  
   const timerDuration = roomData.submissionTimer * 1000;
   const startTime = Date.now();
 
@@ -497,6 +537,15 @@ useEffect(() => {
 
   return (
     <div className="flex flex-col items-center min-h-screen bg-gray-900 text-white p-6">
+      {showConfetti && (
+        <ReactConfetti
+          width={windowSize.width}
+          height={windowSize.height}
+          numberOfPieces={200}
+          recycle={false}
+          colors={['#FFD700', '#FFA500', '#FF69B4', '#00FF00', '#4169E1']}
+        />
+      )}
       <h1 className="text-4xl font-bold mb-4">{t('roomid')}: {roomId}</h1>
       {/* Scoreboard Section */}
       {lastRoundScores && showLastRound && lastRoundScores.length > 0 ? (
@@ -600,7 +649,8 @@ useEffect(() => {
               className={`bg-gray-800 p-4 rounded-lg shadow-md text-center border-4 w-full
           ${showResults && wordMatches[player.userId] === "red" ? "border-red-500" : ""}
           ${showResults && wordMatches[player.userId] === "blue" ? "border-blue-500" : ""}
-          ${showResults && wordMatches[player.userId] === "green" ? "border-green-500" : ""}`}
+          ${showResults && wordMatches[player.userId] === "green" ? "border-green-500" : ""}
+          ${showResults && wordMatches[player.userId] === "black" ? "border-black" : ""}`}
             >
               <h3 className="text-lg font-semibold">{player.nickname}</h3>
               <div className="mt-2 p-2 bg-gray-700 rounded-md">
@@ -626,7 +676,8 @@ useEffect(() => {
                 className={`bg-gray-800 p-4 rounded-lg shadow-md text-center border-4 w-full
           ${showResults && wordMatches[player.userId] === "red" ? "border-red-500" : ""}
           ${showResults && wordMatches[player.userId] === "blue" ? "border-blue-500" : ""}
-          ${showResults && wordMatches[player.userId] === "green" ? "border-green-500" : ""}`}
+          ${showResults && wordMatches[player.userId] === "green" ? "border-green-500" : ""}
+          ${showResults && wordMatches[player.userId] === "black" ? "border-black" : ""}`}
               >
                 <h3 className="text-lg font-semibold">{player.nickname}</h3>
                 <div className="mt-2 p-2 bg-gray-700 rounded-md">
@@ -640,18 +691,22 @@ useEffect(() => {
 
       {/* Nickname Input and Button Section */}
       {!gameStarted && !isNicknameSet && (
-        <div className="w-full max-w-2xl mb-6 flex items-center justify-between space-x-4">
-          <input
-            type="text"
-            value={nickname}
-            onChange={(e) => setNickname(e.target.value)}
-            placeholder={t('enter_your_nickname')}
-            className="w-2/3 p-2 text-lg border rounded-md text-black"
-            maxLength={15}
-          />
+        <div className="w-full max-w-2xl flex items-stretch space-x-4 mb-6">
+          <div className="flex-grow">
+            <div className="flex items-center justify-between bg-gray-800 p-4 rounded-lg">
+              <input
+                type="text"
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
+                placeholder={t('enter_your_nickname')}
+                className="w-full p-2 text-lg border rounded-md text-black"
+                maxLength={15}
+              />
+            </div>
+          </div>
           <button
             onClick={handleNicknameSubmit}
-            className="w-1/3 bg-blue-500 text-white px-4 py-2 text-lg rounded-lg shadow-md hover:bg-blue-600 transition"
+            className="bg-blue-500 text-white px-8 text-xl rounded-lg shadow-md hover:bg-blue-600 transition flex items-center justify-center min-w-[200px]"
           >
             {t('set_nickname')}
           </button>
@@ -660,48 +715,50 @@ useEffect(() => {
 
       {/* Language Dropdown and Start Game Button Section */}
       {isHost && !gameStarted && (
-        <div className="w-full max-w-2xl flex flex-col md:flex-row items-center justify-between space-x-0 md:space-x-4 mb-6">
-          <div className="flex items-center space-x-2 mb-4 md:mb-0">
-          {!winner && (
-            <div>
-            <span className="text-lg text-gray-300">{t('word_pack_language')}</span>
-            
-            <select
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              className="p-2 ml-4 text-lg border rounded-md text-black focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-            >
-              <option value="finnish">{t('finnish')}</option>
-              <option value="english">{t('english')}</option>
-            </select>
-            </div>
-          )}
+        <div className="w-full max-w-2xl flex items-stretch space-x-4 mb-6">
+          <div className="flex-grow flex flex-col space-y-4">
+            {!winner && (
+              <div className="flex items-center justify-between bg-gray-800 p-4 rounded-lg">
+                <span className="text-lg text-gray-300">{t('word_pack_language')}</span>
+                <select
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  className="p-2 ml-4 text-lg border rounded-md text-black focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                >
+                  <option value="finnish">{t('finnish')}</option>
+                  <option value="english">{t('english')}</option>
+                  <option value="custom">{t('custom')}</option>
+                </select>
+              </div>
+            )}
+            {!winner && (
+              <div className="flex items-center justify-between bg-gray-800 p-4 rounded-lg">
+                <span className="text-lg text-gray-300">{t('submission_timer')}</span>
+                <select
+                  value={submissionTimer}
+                  onChange={(e) => setSubmissionTimer(Number(e.target.value))}
+                  className="p-2 ml-4 text-lg border rounded-md text-black focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                >
+                  <option value="-1">{t('unlimited')}</option>
+                  <option value="10">10s</option>
+                  <option value="20">20s</option>
+                  <option value="30">30s</option>
+                  <option value="45">45s</option>
+                  <option value="60">60s</option>
+                  <option value="90">90s</option>
+                  <option value="120">120s</option>
+                </select>
+              </div>
+            )}
           </div>
-          <div className="ml-4">
-        <span className="text-lg text-gray-300">{t('submission_timer')}</span>
-        <select
-          value={submissionTimer}
-          onChange={(e) => setSubmissionTimer(Number(e.target.value))}
-          className="p-2 ml-4 text-lg border rounded-md text-black"
-        >
-          <option value="10">10s</option>
-          <option value="20">20s</option>
-          <option value="30">30s</option>
-          <option value="45">45s</option>
-          <option value="60">60s</option>
-          <option value="90">90s</option>
-          <option value="120">120s</option>
-        </select>
-      </div>
           {!winner && (
-          <button
-            onClick={handleStartGame}
-            className="bg-green-500 text-white px-8 py-4 text-xl rounded-lg shadow-md hover:bg-green-600 transition w-full md:w-auto"
-            disabled={isLoading}
-          >
-            {isLoading ? t('starting_game') : t('start_game')}
-          </button>
-          
+            <button
+              onClick={handleStartGame}
+              className="bg-green-500 text-white px-8 text-xl rounded-lg shadow-md hover:bg-green-600 transition flex items-center justify-center min-w-[200px]"
+              disabled={isLoading}
+            >
+              {isLoading ? t('starting_game') : t('start_game')}
+            </button>
           )}
         </div>
       )}

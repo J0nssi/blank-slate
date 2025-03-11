@@ -35,6 +35,8 @@
     "new_game": "New game available in",
     "last_round_scoreboard": "🏆 Last round Scoreboard 🏆",
     "submission_timer": "Submission Timer",
-    "time_left": "Time left"
+    "time_left": "Time left",
+    "unlimited": "Unlimited",
+    "custom": "Custom"
   }
 }

@@ -33,6 +33,10 @@
     "submit_word": "Lukitse vastaus",
     "starting_game": "Aloitetaan peliä",
     "new_game": "Uusi peli saatavilla",
-    "last_round_scoreboard": "🏆 Viime kierroksen Tulostaulu 🏆"
+    "last_round_scoreboard": "🏆 Viime kierroksen Tulostaulu 🏆",
+    "submission_timer": "Vastausaika",
+    "time_left": "Aikaa jäljellä",
+    "unlimited": "Loputon",
+    "custom": "Oma sanapaketti"
     }
 }
